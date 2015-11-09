@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++0x -O3 -DNDEBUG    CMakeFiles/Realtime.dir/main.cpp.o  -o /home/redsea/Documents/simplecat/examples/bin/Realtime -rdynamic /home/redsea/Documents/simplecat/lib/libsimplecat.so /opt/etherlab/lib/libethercat.so -lrt -Wl,-rpath,/home/redsea/Documents/simplecat/lib:/opt/etherlab/lib 
