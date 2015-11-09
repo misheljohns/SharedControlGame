@@ -1,8 +1,10 @@
+/**********  Code to simulate game and provide assistance methods **********/
+
 //Communication with Hapkit
 import processing.serial.*;
 Serial myPort;        // The serial port
 
-//TCPscoket for motor control
+//TCPsocket for motor control
 import processing.net.*;
 import java.nio.ByteBuffer;
 int port = 10002; 
@@ -11,7 +13,7 @@ Server myServer;
 byte[] byteBuffer = new byte[8];
 
 //Image rendering
-PImage block; 
+//PImage block; 
 
 //Block positions array
 PVector blockPositions[];
@@ -19,10 +21,13 @@ PVector blockPositions[];
 //number and density of blocks
 int npartTotal = 100; //number of blocks
 float partSize = 20;
-float partSpread = 20.0; //how much vertical space the blocks are spread over - reducing this value increases density, difficulty; needs to be >1
+float partSpread = 5.0; //how much vertical space the blocks are spread over - reducing this value increases density, difficulty; needs to be >1
 
 //speed of movement
 float worldVelocity = 0.5; //number of frame sizes that is passed in one second
+
+//player position
+float playerPosx = 0.5;
 
 //Steering Control
 float steerAngle = 0.0;
@@ -42,6 +47,7 @@ void setup() {
   size(800, 600);//, P3D);
   frameRate(60);
   rectMode(RADIUS); // I like to draw around the center position of the rectangles
+  ellipseMode(RADIUS); // I like to draw around the center position of the circles
   fill(255); //white fill for now
   
   
@@ -64,6 +70,8 @@ void setup() {
 
 void draw () {
   background(0);
+  
+  drawPlayer(playerPosx);
 
   for (int n = 0; n < npartTotal; n++) {
     if((blockPositions[n].y < 1) && (blockPositions[n].y > 0)) { //within window
@@ -81,10 +89,15 @@ void draw () {
   }  
 }
 
+void drawPlayer(float playerPos) {
+  ellipse(playerPos*width,height-10,30,30);
+}
+
 void drawBlock(PVector center) {
   rect(center.x*width,(1-center.y)*height,50,50);
 }
 
+//block positions at Start
 void initPositions() {
   blockPositions = new PVector[npartTotal];
   for (int n = 0; n < blockPositions.length; n++) {
@@ -93,7 +106,7 @@ void initPositions() {
   }  
 }
 
-//runs the world - moves block down according to velocity, creates new blocks as blocks leave the world
+//runs the world - moves block down according to velocity, creates new blocks as blocks leave the world, moves player according to steering angle
 void runWorld() {
   while(true) {
     ctime = millis();
@@ -115,40 +128,43 @@ void runWorld() {
   }
 }
 
+//initialize Serial communication with Hapkit
 void initSerial() {
   println(Serial.list());
   myPort = new Serial(this, Serial.list()[0], 115200);
   myPort.bufferUntil('\n');
 }
 
+//called when there is data on the Serial buffer, read input to steering angle, then send steering torque output. This means that it is the hapkit communication frequency that decides torque message timing
 void serialEvent (Serial myPort) {
    String inString = myPort.readStringUntil('\n');
    if (inString != null) {
-     // trim off any whitespace:
-     inString = trim(inString);
-     // convert to a float
-     float inByte = float(inString);
+     inString = trim(inString); // trim off any whitespace:
+     float inByte = float(inString); // convert to a float
      //println(inByte);
      steerAngle = inByte;
+     myPort.write(String.valueOf(steerTorque)+'\n'); //send torque to hapkit motor
    }
 }
 
+//initialize server for communication with motor control C++ program
 void initServer() {
   myServer = new Server(this, port);
   thread("runServer");
 }
 
+//run the server, accept position inputs, send force outputs
 void runServer () {
   while(true) {
     Client thisClient = myServer.available();
     // If the client is not null, and says something, display what it said
-    if (thisClient !=null) {
-      
+    if (thisClient !=null) { 
       String whatClientSaid = thisClient.readString();
-      double data_received = Double.parseDouble(whatClientSaid);
       if (whatClientSaid != null) {
+        double data_received = Double.parseDouble(whatClientSaid);
         println("Data received : " + data_received);
-        thisClient.write(thisClient.ip() + "t" + whatClientSaid);
+        steerAngle = (float) data_received;
+        thisClient.write(String.valueOf(steerTorque));
       } 
       
       /*int byteCnt = thisClient.readBytes(byteBuffer); //readString()

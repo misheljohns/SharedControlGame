@@ -1,0 +1,16 @@
+## TODO:
+Blocks
+- block size variations
+- block patterns
+- block images
+
+Input
+- player avatar/vehicle
+- vehicle control
+
+Feedback
+- assistive feedback
+- haptic feedback to keep the player within the frame boundaries
+
+## Notes:
+We need to design the obstacles so the feedback forces we can produce are actually helpful. For complicated scenarios where we need to choose a difficult maneuver in order to avoid an impossible situation later, simple force feedback will not work.
