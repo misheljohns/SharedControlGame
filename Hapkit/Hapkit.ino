@@ -12,24 +12,6 @@ const float calib_intercept = 2.8343E-3;
 const float calib_slope = 2.0944E-4;
 const int MOTOR_DIRECTION = 1;
 
-//effect type
-const int effect_type = 9;
-
-// Effect variables
-//A. Virtual wall #1
-const double wall_x = 0.005;        //wall position [m]
-const double wall_k = 1000.0;          //spring force constant for wall [N/m]
-
-//G. mass spring damper #9
-double mass2_pos = 0;       //position of moving mass2 [m]
-double mass2_vel = 0;       //velocity of mass2 [m/s]
-double mass2_force = 0;      //force on mass2 [N]
-const double mass2_k = 50;       //spring constant [N/m]
-const double mass2_b = 1;        //damping constant [Ns/m]
-const double mass2_x0 = 0.01;    //equilibruim position of mass2 [m]
-const double mass2_ku = 400;      //user-mass2 spring constant [N/m]
-const double mass2 = 1.5;        //simulated mass2 [kg]
-
 // Pin declares
 const int pwmPin = 5; // PWM output pin for motor 1
 const int dirPin = 8; // direction output pin for motor 1
@@ -65,13 +47,16 @@ double timestep = 0.001;
 int timecount = -1;
 unsigned long time = 0;
 const int timecount_reset = 1000; //calculate time every 1000 loops
-const int timecount_serial= 30; //send serial info every 30 cycles - one cycle takes about 0.3ms from measurement, so 30 of them should take about 9ms
+const int timecount_serial= 10; //send serial info every 10 cycles - one cycle takes about 0.3ms from measurement, so 10 of them should take about 3ms
 
 // Force output variables
 double force = 0;           // force at the handle
 double Tp = 0;              // torque of the motor pulley
 double duty = 0;            // duty cylce (between 0 and 255)
 unsigned int output = 0;    // output command to the motor
+
+// Serial communication buffer
+String inString = "";    // string to hold input
 
 // --------------------------------------------------------------
 // Setup function -- NO NEED TO EDIT
@@ -201,14 +186,34 @@ void loop()
   
   /*****  send serial messages at >60Hz (<16ms) ********/
   if((timecount % timecount_serial) == 0) {
-   Serial.println(ts); //send position data - angle in mm
+   Serial.println(-ts); //send position data - angle in mm
+   //Serial.println(force); //send position data - angle in mm
   }
-  
 }
 
 void serialEvent() {
   while (Serial.available()) {
-    force = Serial.parseFloat();
+    int inChar = Serial.read();
+
+    if (inChar != '\n') { 
+
+      // As long as the incoming byte
+      // is not a newline,
+      // convert the incoming byte to a char
+      // and add it to the string
+      inString += (char)inChar;
+    }
+    // if you get a newline, print the string,
+    // then the string's value as a float:
+    else {
+//      Serial.print("Input string: ");
+//      Serial.println(inString);
+//      Serial.print("\tAfter conversion to float:");
+      force = inString.toFloat();
+      // clear the string for new input:
+      inString = "";
+    }
+    //force = Serial.parseFloat();
   }
 }
 
