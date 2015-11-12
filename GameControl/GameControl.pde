@@ -4,6 +4,7 @@
 import processing.serial.*;
 Serial myPort;        // The serial port
 
+
 //TCPsocket for motor control
 import processing.net.*;
 import java.nio.ByteBuffer;
@@ -12,20 +13,32 @@ int cnt = 0;
 Server myServer;        
 byte[] byteBuffer = new byte[8];
 
-//Image rendering
-//PImage block; 
 
+/*
 //Block positions array
 PVector blockPositions[];
 
+//Image rendering
+//PImage block; 
+
 //number and density of blocks
-int npartTotal = 50; //number of blocks
-//float partSize = 20;
-float partSpread = 10.0; //how much vertical space the blocks are spread over - reducing this value increases density, difficulty; needs to be >1
+static final int nblockTotal = 10; //number of blocks
+static final float blockSpread = 5.0; //how much vertical space the blocks are spread over - reducing this value increases density, difficulty; needs to be >1
+static final float blockHeight = 0.5; //height of block
+static final float blockWidth = 0.1; //width of block
+*/
+
+//single available path
+float roadPositions[];
+static final int nroadPositions = 12; //number of road positions cached, roadStepY*nroadPositions has to be greateer than 1 to be beigger than the screen size
+static final float roadStepY = 0.1; //the road horizontal position changes every x fraction of the screen size
+float roadYPosition = 0.0; //vertical movement of the world
+static final float roadStepX = 0.1; //max sideways step of the road in one vertical step
+static final float roadWidth = 0.3;//width of the road
 
 //speed of movement
-float worldVelocity = 0.5; //number of frame sizes that is passed in one second
-float playerVelocity = 0.5; //adjusting how much
+static final float worldVelocity = 0.5; //number of frame sizes that is passed in one second
+static final float playerVelocity = 0.5; //adjusting how much the player moves with the steering or keypress
 
 //player position
 float playerPosx = 0.5;
@@ -35,7 +48,7 @@ float steerAngle = 0.0;
 float steerTorque = 0.0;
 
 //keyboard control
-float steerKeyStep = 0.1; //one press of the left or right key changes the steering angle by this much, in radians
+static final float steerKeyStep = 0.1; //one press of the left or right key changes the steering angle by this much, in radians
 
 //Frame rate and timing stuff
 int fcount, lastm;
@@ -47,7 +60,7 @@ int ctime = 0;//current time
 int ltime = 0;//last time
 
 //wallforce
-float kwall = 200.0; //force constant for wall
+static final float kwall = 200.0; //force constant for wall
 
 void setup() {
   //size(640, 480, P3D);
@@ -55,18 +68,22 @@ void setup() {
   frameRate(60);
   rectMode(RADIUS); // I like to draw around the center position of the rectangles
   ellipseMode(RADIUS); // I like to draw around the center position of the circles
+  
+  strokeCap(ROUND); //line ends should be rounded
+  strokeJoin(ROUND); //lines join in rounded edge, for the road
+  
   fill(255); //white fill for now
 
 
   //hapkit communication
-  initSerial();
+  //initSerial();
 
   //motor control from realtime OS
   //initServer();
 
-  //block = loadImage("block.png");
+  //road = loadImage("road.png");
 
-  initPositions(); //initial block positions
+  initPositions(); //initial road positions
   thread("runWorld"); //this thread generates blocks and integrates over time
 
   // Writing to the depth buffer is disabled to avoid rendering
@@ -78,14 +95,22 @@ void setup() {
 void draw () {
   background(0);
 
-  drawPlayer(playerPosx);
-
-  for (int n = 0; n < npartTotal; n++) {
-    if ((blockPositions[n].y < 1) && (blockPositions[n].y > 0)) { //within window
+  
+  /*for (int n = 0; n < nblockTotal; n++) {
+    if ((blockPositions[n].y < (1 + blockWidth)) && (blockPositions[n].y > (0 - blockHeight))) { //within window
       drawBlock(blockPositions[n]);
     }
-  }
-
+  }*/
+  drawRoad();
+  drawPlayer(playerPosx);
+  
+  float idealPosX = roadPositions[0] + (roadYPosition/roadStepY)*(roadPositions[1]-roadPositions[0]);
+  fill(0,255,0);
+  noStroke();
+  ellipse(idealPosX*width, height-10, 10, 10);
+  stroke(255);
+  fill(255);
+  
   fcount += 1;
   int m = millis();
   if (m - lastm > 1000) {
@@ -97,19 +122,44 @@ void draw () {
 }
 
 void drawPlayer(float playerPos) {
+  fill(255,0,0);
+  noStroke();
   ellipse(playerPos*width, height-10, 30, 30);
+  stroke(255);
+  fill(255);
 }
 
 void drawBlock(PVector center) {
-  rect(center.x*width, (1-center.y)*height, 50, 50);
+//  rect(center.x*width, (1-center.y)*height, blockWidth*width, blockHeight*height);
+}
+
+void drawRoad() {
+  noFill();
+  stroke(255);
+  strokeWeight((int)(roadWidth*width));
+  beginShape();
+  for (int n = 0; n < nroadPositions; n++) {
+    vertex(roadPositions[n]*width, (1 - n*roadStepY + roadYPosition)*height);
+  }
+  endShape();
+  fill(255);
 }
 
 //block positions at Start
 void initPositions() {
-  blockPositions = new PVector[npartTotal];
-  for (int n = 0; n < blockPositions.length; n++) {
+  roadPositions = new float[nroadPositions];
+  roadPositions[0] = 0.5;
+  for (int n = 1; n < nroadPositions; n++) {
     //blockPositions[n] = new PVector(-1,0);
-    blockPositions[n] = new PVector(random(-1, 1), random(0, partSpread));
+    if(roadPositions[n-1] <= 0.1) {
+      roadPositions[n] = roadPositions[n-1] + random(0, roadStepX);
+    }
+    else if(roadPositions[n-1] >= 0.9) {
+      roadPositions[n] = roadPositions[n-1] - random(0, roadStepX);
+    }
+    else {
+      roadPositions[n] = roadPositions[n-1] + random(-roadStepX, roadStepX);
+    }
   }
 }
 
@@ -117,14 +167,27 @@ void initPositions() {
 void runWorld() {
   while (true) {
     ctime = millis();
+    
+    //moving the world
     float move = ((float) (ctime - ltime))*worldVelocity/1000; //time in ms, so we divide by 1000
-    //print(move);
-    for (int n = 0; n < blockPositions.length; n++) {
-      blockPositions[n].y -= move;
-      if (blockPositions[n].y < 0) {
-        blockPositions[n] = new PVector(random(-1, 1), random(1, partSpread));//block randomly appears in the queue above you
+    roadYPosition += move; //move forward by move
+    if(roadYPosition > roadStepY) { //we have moved more than a step, we can jump to next step and create a new step
+      roadYPosition -= roadStepY;
+      for (int n = 0; n < (nroadPositions - 1); n++) {
+        roadPositions[n] = roadPositions[n+1];
+      }
+      if(roadPositions[nroadPositions - 2] <= 0.1) {
+        roadPositions[nroadPositions - 1] = roadPositions[nroadPositions - 2] + random(0, roadStepX);
+      }
+      else if(roadPositions[nroadPositions - 2] >= 0.9) {
+        roadPositions[nroadPositions - 1] = roadPositions[nroadPositions - 2] - random(0, roadStepX);
+      }
+      else {
+        roadPositions[nroadPositions - 1] = roadPositions[nroadPositions - 2] + random(-roadStepX, roadStepX);
       }
     }
+     
+    //update player position
     playerPosx += playerVelocity*steerAngle*((float) (ctime - ltime))/1000; 
     
     if(playerPosx > 0.9) {
