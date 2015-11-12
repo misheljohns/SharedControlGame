@@ -2,7 +2,7 @@
 
 //TODO: 
 //ADD damping to shared control
-
+//SERIAL FREQUENCY printout
 
 //Communication with Hapkit
 import processing.serial.*;
@@ -18,20 +18,6 @@ Server myServer;
 byte[] byteBuffer = new byte[8];
 
 
-/*
-//Block positions array
-PVector blockPositions[];
-
-//Image rendering
-//PImage block; 
-
-//number and density of blocks
-static final int nblockTotal = 10; //number of blocks
-static final float blockSpread = 5.0; //how much vertical space the blocks are spread over - reducing this value increases density, difficulty; needs to be >1
-static final float blockHeight = 0.5; //height of block
-static final float blockWidth = 0.1; //width of block
-*/
-
 //single available path
 float roadPositions[];
 static final int nroadPositions = 12; //number of road positions cached, roadStepY*nroadPositions has to be greateer than 1 to be beigger than the screen size
@@ -45,7 +31,7 @@ static final float worldVelocity = 0.5; //number of frame sizes that is passed i
 static final float playerVelocity = 0.5; //adjusting how much the player moves with the steering or keypress
 
 //alternate movement - steering angle corresponds to actual position
-static final float steerScale = 1.0; //1 rad of rotation = steerScale movement on screen
+static final float steerScale = 1.5; //1 rad of rotation = steerScale movement on screen
 
 //margin zones
 static final float marginZone = 0.05;
@@ -66,8 +52,7 @@ static final float steerKeyStep = 0.1; //one press of the left or right key chan
 
 //Frame rate and timing stuff
 int fcount, lastm;
-float frate;
-//int fint = 3;
+int messagecount = 0;
 
 //time for world simulation
 int ctime = 0;//current time
@@ -77,8 +62,8 @@ int ltime = 0;//last time
 static final float kwall = 10.0; //force constant for wall
 
 //shared control
-static final float kFeedback = 4.0; //force coefficient for shared control
-static final float alphaFeedback = 0.6; //percentage of force applied
+static final float kFeedback = 5.0; //force coefficient for shared control
+static final float alphaFeedback = 1.0; //fraction of force applied
 
 
 void setup() {
@@ -124,10 +109,12 @@ void draw () {
   fcount += 1;
   int m = millis();
   if (m - lastm > 1000) {
-    frate = float(fcount);
+    print("fps: " + fcount + "; ");
+    println("motormsg: " + messagecount + "; ");
+    messagecount = 0;
     fcount = 0;
     lastm = m;
-    println("fps: " + frate);
+   // print("steertorque: " + steerTorque);
   }
 }
 
@@ -228,7 +215,8 @@ void runWorld() {
       steerTorque = 0.0;
       
       //shared control forces
-      float idealPosX = roadPositions[0] + (roadYPosition/roadStepY)*(roadPositions[1]-roadPositions[0]);
+      //float idealPosX = roadPositions[0] + (roadYPosition/roadStepY)*(roadPositions[1]-roadPositions[0]);
+      float idealPosX = roadPositions[1] + (roadYPosition/roadStepY)*(roadPositions[2]-roadPositions[1]); //doing it a step ahead
       steerTorque = alphaFeedback*kFeedback*(idealPosX - playerPosx);
     }
     
@@ -258,8 +246,9 @@ void serialEvent (Serial myPort1) {
     float inByte = float(inString); // convert to a float
     //println(inByte);
     steerAngle = inByte;
-    myPort1.write(String.valueOf(steerTorque)+'\n'); //send torque to hapkit motor
-    //print("Torque Sent: " + String.valueOf(steerTorque)+'\n');
+    myPort1.write(String.format("%.3f", steerTorque)+'\n'); //send torque to hapkit motor
+    //print("Torque Sent: " + String.format("%.3f", steerTorque)+'\n');
+    messagecount += 1;
   }
 }
 
@@ -281,6 +270,7 @@ void runServer () {
         //println("Data received : " + data_received);
         steerAngle = (float) data_received;
         thisClient.write(String.valueOf(steerTorque));
+        messagecount += 1;
       } 
 
       /*int byteCnt = thisClient.readBytes(byteBuffer); //readString()

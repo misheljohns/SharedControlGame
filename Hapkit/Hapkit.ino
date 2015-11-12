@@ -18,7 +18,7 @@ const int dirPin = 8; // direction output pin for motor 1
 const int sensorPosPin = A2; // input pin for MR sensor
 const int fsrPin = A3; // input pin for FSR sensor
 
-const double temp_damping = 5; //temporarily adding damping to the handle motion
+const double temp_damping = 2; //temporarily adding damping to the handle motion
 
 // Position tracking variables
 int updatedPos = 0;     // keeps track of the latest updated value of the MR sensor reading
@@ -49,7 +49,7 @@ double timestep = 0.001;
 int timecount = -1;
 unsigned long time = 0;
 const int timecount_reset = 1000; //calculate time every 1000 loops
-const int timecount_serial= 10; //send serial info every 10 cycles - one cycle takes about 0.3ms from measurement, so 10 of them should take about 3ms
+const int timecount_serial= 3; //send serial info every x cycles - one cycle takes about 1ms
 
 // Force output variables
 double force = 0;           // force at the handle
@@ -188,7 +188,7 @@ void loop()
   
   /*****  send serial messages at >60Hz (<16ms) ********/
   if((timecount % timecount_serial) == 0) {
-   Serial.println(-ts); //send position data - angle in mm
+   Serial.println(-ts, 3); //send position data - angle in rad, up to 3rd decimal
    //Serial.println(force);
    //Serial.println(vh);
   }
