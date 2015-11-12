@@ -37,7 +37,7 @@ float roadPositions[];
 static final int nroadPositions = 12; //number of road positions cached, roadStepY*nroadPositions has to be greateer than 1 to be beigger than the screen size
 static final float roadStepY = 0.1; //the road horizontal position changes every x fraction of the screen size
 float roadYPosition = 0.0; //vertical movement of the world
-static final float roadStepX = 0.03; //max sideways step of the road in one vertical step
+static final float roadStepX = 0.08; //max sideways step of the road in one vertical step
 static final float roadWidth = 0.3;//width of the road
 
 //speed of movement
@@ -78,7 +78,7 @@ static final float kwall = 10.0; //force constant for wall
 
 //shared control
 static final float kFeedback = 4.0; //force coefficient for shared control
-static final float alphaFeedback = 0.1; //percentage of force applied
+static final float alphaFeedback = 0.6; //percentage of force applied
 
 
 void setup() {

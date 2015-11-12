@@ -18,6 +18,8 @@ const int dirPin = 8; // direction output pin for motor 1
 const int sensorPosPin = A2; // input pin for MR sensor
 const int fsrPin = A3; // input pin for FSR sensor
 
+const double temp_damping = 5; //temporarily adding damping to the handle motion
+
 // Position tracking variables
 int updatedPos = 0;     // keeps track of the latest updated value of the MR sensor reading
 int rawPos = 0;         // current raw reading from MR sensor
@@ -187,7 +189,8 @@ void loop()
   /*****  send serial messages at >60Hz (<16ms) ********/
   if((timecount % timecount_serial) == 0) {
    Serial.println(-ts); //send position data - angle in mm
-   //Serial.println(force); //send position data - angle in mm
+   //Serial.println(force);
+   //Serial.println(vh);
   }
 }
 
@@ -210,6 +213,7 @@ void serialEvent() {
 //      Serial.println(inString);
 //      Serial.print("\tAfter conversion to float:");
       force = inString.toFloat();
+      force = force - temp_damping*vh;
       // clear the string for new input:
       inString = "";
     }
