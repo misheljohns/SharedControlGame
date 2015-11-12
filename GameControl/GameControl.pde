@@ -106,10 +106,8 @@ void drawBlock(PVector center) {
 }
 
 void drawWallOpening(PVector center) {
-  rectMode(CORNER);
-  rect(0, (1-center.y)*height - 5, center.x*width - 100, (1-center.y)*height + 5);
-  rect(center.x*width + 100, (1-center.y)*height - 5, width, (1-center.y)*height + 5);
-  rectMode(RADIUS); // return to Mishel's favorite mode
+  rect((center.x*width - 50)/2, (1-center.y)*height, center.x*width - 50, 10);
+  rect((width + center.x*width + 50)/2, (1-center.y)*height, width - center.x*width - 50, 10); 
 }
 
 //block positions at Start
