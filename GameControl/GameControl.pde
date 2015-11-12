@@ -32,6 +32,7 @@ static final float playerVelocity = 0.5; //adjusting how much the player moves w
 
 //alternate movement - steering angle corresponds to actual position
 static final float steerScale = 1.5; //1 rad of rotation = steerScale movement on screen
+static final float steerTorqueMax = 2.0; //max force that can be applied to the motor
 
 //margin zones
 static final float marginZone = 0.05;
@@ -51,8 +52,10 @@ float steerTorque = 0.0;
 static final float steerKeyStep = 0.1; //one press of the left or right key changes the steering angle by this much, in radians
 
 //Frame rate and timing stuff
-int fcount, lastm;
+int fcount= 0;
+int lastm = 0;
 int messagecount = 0;
+int worldcount = 0;
 
 //time for world simulation
 int ctime = 0;//current time
@@ -110,8 +113,10 @@ void draw () {
   int m = millis();
   if (m - lastm > 1000) {
     print("fps: " + fcount + "; ");
+    print("worldupd: " + worldcount + "; ");
     println("motormsg: " + messagecount + "; ");
     messagecount = 0;
+    worldcount = 0;
     fcount = 0;
     lastm = m;
    // print("steertorque: " + steerTorque);
@@ -219,14 +224,21 @@ void runWorld() {
       float idealPosX = roadPositions[1] + (roadYPosition/roadStepY)*(roadPositions[2]-roadPositions[1]); //doing it a step ahead
       steerTorque = alphaFeedback*kFeedback*(idealPosX - playerPosx);
     }
-    
+    //saturation
+    if(steerTorque >= steerTorqueMax) {
+      steerTorque = steerTorqueMax;
+    }
+    else if(steerTorque <= -steerTorqueMax) {
+      steerTorque = -steerTorqueMax;
+    }
     ltime = ctime;
     try {
-      Thread.sleep(1);//wait 10ms
+      //Thread.sleep(1);//,10000);//wait 0ms and 100,000ns (=0.1ms(
     }
     catch(Exception E)
     { //throws InterruptedException
     }
+    worldcount += 1;
   }
 }
 
