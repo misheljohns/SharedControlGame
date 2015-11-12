@@ -21,7 +21,7 @@ PVector blockPositions[];
 //number and density of blocks
 int npartTotal = 50; //number of blocks
 //float partSize = 20;
-float partSpread = 10.0; //how much vertical space the blocks are spread over - reducing this value increases density, difficulty; needs to be >1
+float partSpread = 40.0; //how much vertical space the blocks are spread over - reducing this value increases density, difficulty; needs to be >1
 
 //speed of movement
 float worldVelocity = 0.5; //number of frame sizes that is passed in one second
@@ -82,7 +82,8 @@ void draw () {
 
   for (int n = 0; n < npartTotal; n++) {
     if ((blockPositions[n].y < 1) && (blockPositions[n].y > 0)) { //within window
-      drawBlock(blockPositions[n]);
+      //drawBlock(blockPositions[n]);
+      drawWallOpening(blockPositions[n]);
     }
   }
 
@@ -102,6 +103,13 @@ void drawPlayer(float playerPos) {
 
 void drawBlock(PVector center) {
   rect(center.x*width, (1-center.y)*height, 50, 50);
+}
+
+void drawWallOpening(PVector center) {
+  rectMode(CORNER);
+  rect(0, (1-center.y)*height - 5, center.x*width - 100, (1-center.y)*height + 5);
+  rect(center.x*width + 100, (1-center.y)*height - 5, width, (1-center.y)*height + 5);
+  rectMode(RADIUS); // return to Mishel's favorite mode
 }
 
 //block positions at Start
@@ -150,8 +158,8 @@ void runWorld() {
 //initialize Serial communication with Hapkit
 void initSerial() {
   println(Serial.list());
-  myPort = new Serial(this, Serial.list()[0], 115200);
-  myPort.bufferUntil('\n');
+//  myPort = new Serial(this, Serial.list()[0], 115200);
+//  myPort.bufferUntil('\n');
 }
 
 //called when there is data on the Serial buffer, read input to steering angle, then send steering torque output. This means that it is the hapkit communication frequency that decides torque message timing
