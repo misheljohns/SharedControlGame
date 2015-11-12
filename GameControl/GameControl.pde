@@ -1,5 +1,9 @@
 /**********  Code to simulate game and provide assistance methods **********/
 
+//TODO: 
+//ADD damping to shared control
+
+
 //Communication with Hapkit
 import processing.serial.*;
 Serial myPort;        // The serial port
@@ -33,12 +37,22 @@ float roadPositions[];
 static final int nroadPositions = 12; //number of road positions cached, roadStepY*nroadPositions has to be greateer than 1 to be beigger than the screen size
 static final float roadStepY = 0.1; //the road horizontal position changes every x fraction of the screen size
 float roadYPosition = 0.0; //vertical movement of the world
-static final float roadStepX = 0.1; //max sideways step of the road in one vertical step
+static final float roadStepX = 0.03; //max sideways step of the road in one vertical step
 static final float roadWidth = 0.3;//width of the road
 
 //speed of movement
 static final float worldVelocity = 0.5; //number of frame sizes that is passed in one second
 static final float playerVelocity = 0.5; //adjusting how much the player moves with the steering or keypress
+
+//alternate movement - steering angle corresponds to actual position
+static final float steerScale = 1.0; //1 rad of rotation = steerScale movement on screen
+
+//margin zones
+static final float marginZone = 0.05;
+
+//player image
+static final float playerWidth = 0.02;
+static final float playerHeight = 0.05;
 
 //player position
 float playerPosx = 0.5;
@@ -60,7 +74,12 @@ int ctime = 0;//current time
 int ltime = 0;//last time
 
 //wallforce
-static final float kwall = 200.0; //force constant for wall
+static final float kwall = 10.0; //force constant for wall
+
+//shared control
+static final float kFeedback = 4.0; //force coefficient for shared control
+static final float alphaFeedback = 0.1; //percentage of force applied
+
 
 void setup() {
   //size(640, 480, P3D);
@@ -76,7 +95,7 @@ void setup() {
 
 
   //hapkit communication
-  //initSerial();
+  initSerial();
 
   //motor control from realtime OS
   //initServer();
@@ -95,21 +114,12 @@ void setup() {
 void draw () {
   background(0);
 
-  
-  /*for (int n = 0; n < nblockTotal; n++) {
-    if ((blockPositions[n].y < (1 + blockWidth)) && (blockPositions[n].y > (0 - blockHeight))) { //within window
-      drawBlock(blockPositions[n]);
-    }
-  }*/
   drawRoad();
   drawPlayer(playerPosx);
   
-  float idealPosX = roadPositions[0] + (roadYPosition/roadStepY)*(roadPositions[1]-roadPositions[0]);
-  fill(0,255,0);
-  noStroke();
-  ellipse(idealPosX*width, height-10, 10, 10);
-  stroke(255);
-  fill(255);
+  drawIdealPos();
+  
+  drawDetectFailure();
   
   fcount += 1;
   int m = millis();
@@ -124,13 +134,9 @@ void draw () {
 void drawPlayer(float playerPos) {
   fill(255,0,0);
   noStroke();
-  ellipse(playerPos*width, height-10, 30, 30);
+  ellipse(playerPos*width, height-10, playerWidth*width, playerHeight*height);
   stroke(255);
   fill(255);
-}
-
-void drawBlock(PVector center) {
-//  rect(center.x*width, (1-center.y)*height, blockWidth*width, blockHeight*height);
 }
 
 void drawRoad() {
@@ -145,16 +151,35 @@ void drawRoad() {
   fill(255);
 }
 
+void drawIdealPos() {
+  float idealPosX = roadPositions[0] + (roadYPosition/roadStepY)*(roadPositions[1]-roadPositions[0]);
+  fill(0,255,0);
+  noStroke();
+  ellipse(idealPosX*width, height-10, 10, 10);
+  stroke(255);
+  fill(255);
+}
+
+void drawDetectFailure() {
+  float idealPosX = roadPositions[0] + (roadYPosition/roadStepY)*(roadPositions[1]-roadPositions[0]);
+  if(abs(idealPosX - playerPosx) > (roadWidth/2 - playerWidth)) {
+    stroke(255,0,0);
+    line(0,0,0,height);
+    line(width,0,width,height);
+    stroke(255);
+  }
+}
+
 //block positions at Start
 void initPositions() {
   roadPositions = new float[nroadPositions];
   roadPositions[0] = 0.5;
   for (int n = 1; n < nroadPositions; n++) {
     //blockPositions[n] = new PVector(-1,0);
-    if(roadPositions[n-1] <= 0.1) {
+    if(roadPositions[n-1] <= marginZone + roadWidth/2) {
       roadPositions[n] = roadPositions[n-1] + random(0, roadStepX);
     }
-    else if(roadPositions[n-1] >= 0.9) {
+    else if(roadPositions[n-1] >= 1 - marginZone - roadWidth/2) {
       roadPositions[n] = roadPositions[n-1] - random(0, roadStepX);
     }
     else {
@@ -176,28 +201,35 @@ void runWorld() {
       for (int n = 0; n < (nroadPositions - 1); n++) {
         roadPositions[n] = roadPositions[n+1];
       }
-      if(roadPositions[nroadPositions - 2] <= 0.1) {
+      if(roadPositions[nroadPositions - 2] <= marginZone + roadWidth/2) {
         roadPositions[nroadPositions - 1] = roadPositions[nroadPositions - 2] + random(0, roadStepX);
       }
-      else if(roadPositions[nroadPositions - 2] >= 0.9) {
+      else if(roadPositions[nroadPositions - 2] >= 1 - marginZone - roadWidth/2) {
         roadPositions[nroadPositions - 1] = roadPositions[nroadPositions - 2] - random(0, roadStepX);
       }
       else {
         roadPositions[nroadPositions - 1] = roadPositions[nroadPositions - 2] + random(-roadStepX, roadStepX);
       }
     }
-     
-    //update player position
-    playerPosx += playerVelocity*steerAngle*((float) (ctime - ltime))/1000; 
     
-    if(playerPosx > 0.9) {
-     steerTorque = -kwall*(playerPosx - 0.9);
+    /****************************  Player position control  ****************************/ 
+    //update player position
+    //playerPosx += playerVelocity*steerAngle*((float) (ctime - ltime))/1000; 
+    playerPosx = 0.5 + steerAngle*steerScale;
+    
+    //edge of window forces
+    if(playerPosx > 1 - marginZone) {
+     steerTorque = -kwall*(playerPosx - (1 - marginZone));
     }
-    else if(playerPosx < 0.1) {
-     steerTorque = kwall*(0.1 - playerPosx);
+    else if(playerPosx < marginZone) {
+     steerTorque = kwall*(marginZone - playerPosx);
     } 
     else {
       steerTorque = 0.0;
+      
+      //shared control forces
+      float idealPosX = roadPositions[0] + (roadYPosition/roadStepY)*(roadPositions[1]-roadPositions[0]);
+      steerTorque = alphaFeedback*kFeedback*(idealPosX - playerPosx);
     }
     
     ltime = ctime;
