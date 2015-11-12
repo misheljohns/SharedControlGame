@@ -31,7 +31,7 @@ static final float worldVelocity = 0.5; //number of frame sizes that is passed i
 static final float playerVelocity = 0.5; //adjusting how much the player moves with the steering or keypress
 
 //alternate movement - steering angle corresponds to actual position
-static final float steerScale = 1.5; //1 rad of rotation = steerScale movement on screen
+static final float steerScale = 1.0; //1 rad of rotation = steerScale movement on screen
 static final float steerTorqueMax = 2.0; //max force that can be applied to the motor
 
 //margin zones
@@ -40,6 +40,9 @@ static final float marginZone = 0.05;
 //player image
 static final float playerWidth = 0.02;
 static final float playerHeight = 0.05;
+
+//visual occlusion
+boolean visible = true;
 
 //player position
 float playerPosx = 0.5;
@@ -62,7 +65,7 @@ int ctime = 0;//current time
 int ltime = 0;//last time
 
 //wallforce
-static final float kwall = 10.0; //force constant for wall
+static final float kwall = 20.0; //force constant for wall
 
 //shared control
 static final float kFeedback = 5.0; //force coefficient for shared control
@@ -120,7 +123,19 @@ void draw () {
     fcount = 0;
     lastm = m;
    // print("steertorque: " + steerTorque);
+   
+   /***********************  visibility occlusion ********************************/
+   if(visible) {
+     visible = false;
+   }
+   else {
+     visible = true;
+   }
+   
   }
+  if(!visible) {
+     background(0);
+   }
 }
 
 void drawPlayer(float playerPos) {
@@ -233,7 +248,7 @@ void runWorld() {
     }
     ltime = ctime;
     try {
-      //Thread.sleep(1);//,10000);//wait 0ms and 100,000ns (=0.1ms(
+      //Thread.sleep(0,100000);//wait 0ms and 100,000ns (=0.1ms(
     }
     catch(Exception E)
     { //throws InterruptedException

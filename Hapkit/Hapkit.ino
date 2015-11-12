@@ -18,7 +18,7 @@ const int dirPin = 8; // direction output pin for motor 1
 const int sensorPosPin = A2; // input pin for MR sensor
 const int fsrPin = A3; // input pin for FSR sensor
 
-const double temp_damping = 2; //temporarily adding damping to the handle motion
+const double temp_damping = 4; //temporarily adding damping to the handle motion
 
 // Position tracking variables
 int updatedPos = 0;     // keeps track of the latest updated value of the MR sensor reading
