@@ -7,9 +7,13 @@
 //capture performance measures
 //usernames, highscores
 //randomly assign conditions to users
-//export performance data to file
+//export performance data to file - user ID, game condition, section condition, DVs
+//create qualtrics survey
 // make a curved center of the road instead of  discrete sections at angles - or discretize further to smooth - then the discretization will need to be at greater than 200 Hz to not be felt directly; might still cause resonance issues
 
+//NOTE:
+// made variables accessed by the threads volatile, so that any updates are seen immediately by the other threads
+// I do not need to make it atomic, because there's one thread setting the value and another reading it
 
 //Communication with Hapkit
 import processing.serial.*;
@@ -29,15 +33,15 @@ byte[] byteBuffer = new byte[8];
 static final int nroadPositions = 15; //number of road positions cached, roadStepY*nroadPositions has to be greateer than 1 to be beigger than the screen size
 static final float roadStepY = 0.1;//0.1; //the road horizontal position changes every vertical movement that is roadStepY fraction of the screen size
 static final float roadStepX = 0.08; //max sideways step of the road in one vertical step
-static final float roadWidth = 0.3;//width of the road
+static final float roadWidth = 0.15;//width of the road
 static final int nroadPositionsBeneath = 2; //number of road positions that extend beneath the screen - this is to avoid changes in the road when one vertex is removed at the bottom - we need two vertices below the screen to maintain position and slope
 
 //store path
-float roadPositions[];
-float roadYPosition = 0.0; //vertical movement of the world
+volatile float roadPositions[];
+volatile float roadYPosition = 0.0; //vertical movement of the world
 
 //speed of movement
-static final float worldVelocity = 0.5; //number of frame sizes that is passed in one second
+static final float worldVelocity = 0.9; //number of frame sizes that is passed in one second
 static final float playerVelocity = 0.5; //adjusting how much the player moves with the steering or keypress
 
 //alternate movement - steering angle corresponds to actual position
@@ -51,7 +55,7 @@ static final float marginZone = 0.05;
 static final float roadSafety = 0.02;
 
 //player image
-static final float playerWidth = 0.02;
+static final float playerWidth = 0.05;
 static final float playerHeight = 0.05;
 
 //visual occlusion
@@ -59,11 +63,11 @@ static final boolean occlusionEnabled = false;
 boolean visible = true;
 
 //player position
-float playerPosx = 0.5;
+volatile float playerPosx = 0.5;
 
 //Steering Control
-float steerAngle = 0.0;
-float steerTorque = 0.0;
+volatile float steerAngle = 0.0;
+volatile float steerTorque = 0.0;
 
 //keyboard control
 static final float steerKeyStep = 0.01; //one press of the left or right key changes the steering angle by this much, in radians
@@ -86,8 +90,8 @@ static final float kFeedback = 5.0; //force coefficient for shared control
 static final float alphaFeedback = 1.0; //fraction of force applied
 
 //road ideal positions
-float idealPosX = 0; //position of center of road (in fraction of screen)
-float idealVelX = 0; //velocity of road center (in fraction of screen per second)
+volatile float idealPosX = 0; //position of center of road (in fraction of screen)
+volatile float idealVelX = 0; //velocity of road center (in fraction of screen per second)
 
 void setup() {
   //size(640, 480, P3D);
@@ -98,9 +102,6 @@ void setup() {
   
   strokeCap(ROUND); //line ends should be rounded
   strokeJoin(ROUND); //lines join in rounded edge, for the road
-  
-  fill(255); //white fill for now
-
 
   //hapkit communication
   //initSerial();
@@ -145,15 +146,17 @@ void draw () {
    // print("steertorque: " + steerTorque);
    
    /***********************  visibility occlusion ********************************/
-   if(visible) {
-     visible = false;
-   }
-   else {
-     visible = true;
+   if(occlusionEnabled) {
+     if(visible) {
+       visible = false;
+     }
+     else {
+       visible = true;
+     }
    }
    
   }
-  if(!visible && occlusionEnabled) {
+  if(!visible) {
      background(0);
    }
 }
@@ -229,7 +232,7 @@ void initPositions() {
   }
 }
 
-//runs the world - moves block down according to velocity, creates new blocks as blocks leave the world, moves player according to steering angle
+//runs the world - moves block down according to velocity, creates new blocks as blocks leave the world, moves player according to steering angle and applies feedback forces
 void runWorld() {
   while (true) {
     ctime = millis();
@@ -275,10 +278,11 @@ void runWorld() {
       steerTorque = 0.0;
     }  
     
-    
     //shared control forces
     idealPosX = roadPositions[nroadPositionsBeneath] + (roadYPosition/roadStepY)*(roadPositions[nroadPositionsBeneath + 1]-roadPositions[nroadPositionsBeneath]); //position of center of road
     idealVelX = (roadPositions[nroadPositionsBeneath + 1] - roadPositions[nroadPositionsBeneath])*worldVelocity/roadStepY; //velocity, in fraction of screen per second, if we just follow the center of the road all the time , d(roadYPosition)/dt = worldVelocity
+    
+    
     
     //float idealPosX = roadPositions[1] + (roadYPosition/roadStepY)*(roadPositions[2]-roadPositions[1]); //doing it a step ahead
     steerTorque += alphaFeedback*kFeedback*(idealPosX - playerPosx);
@@ -364,4 +368,3 @@ void keyPressed() {
     steerAngle -= steerKeyStep;
   } 
 }
-
