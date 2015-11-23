@@ -10,6 +10,7 @@
 //export performance data to file - user ID, game condition, section condition, DVs
 //create qualtrics survey
 // make a curved center of the road instead of  discrete sections at angles - or discretize further to smooth - then the discretization will need to be at greater than 200 Hz to not be felt directly; might still cause resonance issues
+// curves instead of lines
 
 //NOTE:
 // made variables accessed by the threads volatile, so that any updates are seen immediately by the other threads
@@ -55,7 +56,7 @@ static final float marginZone = 0.05;
 static final float roadSafety = 0.02;
 
 //player image
-static final float playerWidth = 0.05;
+static final float playerWidth = 0.03;
 static final float playerHeight = 0.05;
 
 //visual occlusion
@@ -88,6 +89,7 @@ static final float kwall = 20.0; //force constant for wall
 //shared control
 static final float kFeedback = 5.0; //force coefficient for shared control
 static final float alphaFeedback = 1.0; //fraction of force applied
+static final int feedbackType = 1; //type of shared control
 
 //road ideal positions
 volatile float idealPosX = 0; //position of center of road (in fraction of screen)
@@ -104,7 +106,7 @@ void setup() {
   strokeJoin(ROUND); //lines join in rounded edge, for the road
 
   //hapkit communication
-  //initSerial();
+  initSerial();
 
   //motor control from realtime OS
   //initServer();
@@ -265,28 +267,41 @@ void runWorld() {
     
     
     
-    
+    float wallTorque = 0;
     /*******************************  Applying Forces  ********************************/ 
     //edge of window forces
     if(playerPosx > 1 - marginZone) {
-     steerTorque = -kwall*(playerPosx - (1 - marginZone));
+     wallTorque = -kwall*(playerPosx - (1 - marginZone));
     }
     else if(playerPosx < marginZone) {
-     steerTorque = kwall*(marginZone - playerPosx);
+     wallTorque = kwall*(marginZone - playerPosx);
     } 
     else {
-      steerTorque = 0.0;
+      wallTorque = 0.0;
     }  
     
     //shared control forces
     idealPosX = roadPositions[nroadPositionsBeneath] + (roadYPosition/roadStepY)*(roadPositions[nroadPositionsBeneath + 1]-roadPositions[nroadPositionsBeneath]); //position of center of road
     idealVelX = (roadPositions[nroadPositionsBeneath + 1] - roadPositions[nroadPositionsBeneath])*worldVelocity/roadStepY; //velocity, in fraction of screen per second, if we just follow the center of the road all the time , d(roadYPosition)/dt = worldVelocity
-    
-    
+      
     
     //float idealPosX = roadPositions[1] + (roadYPosition/roadStepY)*(roadPositions[2]-roadPositions[1]); //doing it a step ahead
-    steerTorque += alphaFeedback*kFeedback*(idealPosX - playerPosx);
     
+    float sharedTorque = 0;
+    switch(feedbackType) {
+      case 0:
+        sharedTorque = 0;
+        break;
+      
+      case 1:
+        sharedTorque = alphaFeedback*kFeedback*(idealPosX - playerPosx);
+        break;
+      
+      
+    }
+    
+    
+    steerTorque = wallTorque + sharedTorque;
     
     //saturation
     if(steerTorque >= steerTorqueMax) {
