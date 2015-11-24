@@ -9,8 +9,8 @@
 //randomly assign conditions to users
 //export performance data to file - user ID, game condition, section condition, DVs
 //create qualtrics survey
-// make a curved center of the road instead of  discrete sections at angles - or discretize further to smooth - then the discretization will need to be at greater than 200 Hz to not be felt directly; might still cause resonance issues
-// curves instead of lines
+//make a curved center of the road instead of  discrete sections at angles - or discretize further to smooth - then the discretization will need to be at greater than 200 Hz to not be felt directly; might still cause resonance issues
+//curves instead of lines
 
 //NOTE:
 // made variables accessed by the threads volatile, so that any updates are seen immediately by the other threads
@@ -33,12 +33,16 @@ byte[] byteBuffer = new byte[8];
 //single available path
 static final int nroadPositions = 15; //number of road positions cached, roadStepY*nroadPositions has to be greateer than 1 to be beigger than the screen size
 static final float roadStepY = 0.1;//0.1; //the road horizontal position changes every vertical movement that is roadStepY fraction of the screen size
-static final float roadStepX = 0.08; //max sideways step of the road in one vertical step
-static final float roadWidth = 0.15;//width of the road
+//static final float roadStepX = 0.08; //max sideways step of the road in one vertical step
+static final float roadStepSlope = 0.1; //max change in average slope between two sections of the road
+static final float roadWidth = 0.15; //width of the road
 static final int nroadPositionsBeneath = 2; //number of road positions that extend beneath the screen - this is to avoid changes in the road when one vertex is removed at the bottom - we need two vertices below the screen to maintain position and slope
+static final float roadSlopeLimit = 0.6; //the max distance at which the slope line can intersect the edge (smaller values allower shallower slopes = more difficult play) 
 
 //store path
-volatile float roadPositions[];
+volatile float roadPositions[]; //positions of the road
+volatile float roadSlopes[]; //we now use slopes to calculate positions; this holds delta_x/delta_y
+volatile float roadControlPoints[]; //points calculated according to the slope, in order to plot quadratic bezier curves
 volatile float roadYPosition = 0.0; //vertical movement of the world
 
 //speed of movement
@@ -106,7 +110,7 @@ void setup() {
   strokeJoin(ROUND); //lines join in rounded edge, for the road
 
   //hapkit communication
-  initSerial();
+  //initSerial();
 
   //motor control from realtime OS
   //initServer();
@@ -145,7 +149,7 @@ void draw () {
     worldcount = 0;
     fcount = 0;
     lastm = m;
-   // print("steertorque: " + steerTorque);
+    println("slopes[0]: " + roadSlopes[0]);
    
    /***********************  visibility occlusion ********************************/
    if(occlusionEnabled) {
@@ -188,6 +192,10 @@ void drawRoad() {
     //line(roadPositions[n]*width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height,roadPositions[n - 1]*width, (1 - (n - 1 - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
   }
   endShape();
+  stroke(0,0,255);
+  for (int n = 0; n < nroadPositions; n++) {
+    line(0, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height, width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
+  }
   stroke(255);
   fill(255);
 }
@@ -219,18 +227,13 @@ void drawStats() {
 //block positions at Start
 void initPositions() {
   roadPositions = new float[nroadPositions];
+  roadSlopes = new float[nroadPositions];
+  roadControlPoints = new float[nroadPositions];
   roadPositions[0] = 0.5;
+  roadSlopes[0] = 0;
   for (int n = 1; n < nroadPositions; n++) {
-    //blockPositions[n] = new PVector(-1,0);
-    if(roadPositions[n-1] <= marginZone + roadWidth/2) {
-      roadPositions[n] = roadPositions[n-1] + random(0, roadStepX);
-    }
-    else if(roadPositions[n-1] >= 1 - marginZone - roadWidth/2) {
-      roadPositions[n] = roadPositions[n-1] - random(0, roadStepX);
-    }
-    else {
-      roadPositions[n] = roadPositions[n-1] + random(-roadStepX, roadStepX);
-    }
+    roadSlopes[n] = random(max(-roadPositions[n-1]/roadSlopeLimit,roadSlopes[n-1] - roadStepSlope), min((1 - roadPositions[n-1])/roadSlopeLimit,roadSlopes[n-1] + roadStepSlope));
+    roadPositions[n] = roadPositions[n-1] + roadStepY*(roadSlopes[n-1] + roadSlopes[n])/2;
   }
 }
 
@@ -246,17 +249,11 @@ void runWorld() {
       roadYPosition -= roadStepY;
       for (int n = 0; n < (nroadPositions - 1); n++) {
         roadPositions[n] = roadPositions[n+1]; //move steps along
+        roadSlopes[n] = roadSlopes[n+1]; //move steps along
       }
       //randomly assign new step position
-      if(roadPositions[nroadPositions - 2] <= marginZone + roadWidth/2) {
-        roadPositions[nroadPositions - 1] = roadPositions[nroadPositions - 2] + random(0, roadStepX);
-      }
-      else if(roadPositions[nroadPositions - 2] >= 1 - marginZone - roadWidth/2) {
-        roadPositions[nroadPositions - 1] = roadPositions[nroadPositions - 2] - random(0, roadStepX);
-      }
-      else {
-        roadPositions[nroadPositions - 1] = roadPositions[nroadPositions - 2] + random(-roadStepX, roadStepX);
-      }
+      roadSlopes[nroadPositions - 1] = random(max(-roadPositions[nroadPositions - 2]/roadSlopeLimit,roadSlopes[nroadPositions - 2] - roadStepSlope), min((1 - roadPositions[nroadPositions - 2])/roadSlopeLimit,roadSlopes[nroadPositions - 2] + roadStepSlope));
+      roadPositions[nroadPositions - 1] = roadPositions[nroadPositions - 2] + roadStepY*(roadSlopes[nroadPositions - 2] + roadSlopes[nroadPositions - 1])/2;
     }
     
     /****************************  Player position control  ****************************/ 
