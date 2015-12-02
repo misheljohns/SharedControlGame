@@ -99,9 +99,20 @@ static final int feedbackType = 1; //type of shared control
 volatile float idealPosX = 0; //position of center of road (in fraction of screen)
 volatile float idealVelX = 0; //velocity of road center (in fraction of screen per second)
 
+
+//player score etc
+int playerScore = 0;
+//int lives = 3;
+String playerLevel = "training";
+
+//player performance data
+float meanSquaredError = 0.0; //mean performance data
+long nError = 0; //number of points this mean is over
+
 void setup() {
   //size(640, 480, P3D);
-  size(800, 600);//, P3D);
+  //size(1366, 768);//, P3D);
+  fullScreen();
   frameRate(60);
   rectMode(RADIUS); // I like to draw around the center position of the rectangles
   ellipseMode(RADIUS); // I like to draw around the center position of the circles
@@ -134,7 +145,7 @@ void draw () {
   drawDetectFailure();
   drawIdealPos();
   
-  
+  getPerformance();
   drawStats();
   
   
@@ -149,7 +160,7 @@ void draw () {
     worldcount = 0;
     fcount = 0;
     lastm = m;
-    println("slopes[0]: " + roadSlopes[0]);
+    //println("slopes[0]: " + roadSlopes[0]);
    
    /***********************  visibility occlusion ********************************/
    if(occlusionEnabled) {
@@ -167,6 +178,11 @@ void draw () {
    }
 }
 
+void getPerformance() {
+  float error = playerPosx - idealPosX;
+  meanSquaredError = (meanSquaredError*nError + error*error)/++nError;
+}
+
 void drawPlayer(float playerPos) {
   fill(255,0,0);
   noStroke();
@@ -178,12 +194,18 @@ void drawPlayer(float playerPos) {
 void drawRoad() {
   noFill();
   stroke(255);
-  strokeWeight((int)(roadWidth*width));
+  strokeWeight(1);//(int)(roadWidth*width));
   beginShape();
-  for (int n = 0; n < nroadPositions; n++) {
+  vertex(roadPositions[0]*width, (1 - (0 - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
+  for (int n = 1; n < nroadPositions; n++) {
     vertex(roadPositions[n]*width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
+    float yc = (roadPositions[n] - roadPositions[n-1])/(roadSlopes[n] - roadSlopes[n-1]) + roadSlopes[n]*roadStepY/(roadSlopes[n] - roadSlopes[n-1]) +  n*roadStepY;
+    //quadraticVertex((roadPositions[n-1] + roadSlopes[n-1]*(yc - n*roadStepY))*width,(yc + nroadPositionsBeneath*roadStepY + roadYPosition)*height,roadPositions[n]*width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
+    //quadraticVertex((roadPositions[n-1] + (roadSlopes[n]*(roadPositions[n]-roadPositions[n-1]) + roadSlopes[n]*roadSlopes[n-1]*roadStepY)/(roadSlopes[n] - roadSlopes[n-1]))*width,(1 - (n - 0.5 - nroadPositionsBeneath)*roadStepY + roadYPosition)*height,roadPositions[n]*width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
+    point((roadPositions[n-1] + (roadSlopes[n]*(roadPositions[n]-roadPositions[n-1]) + roadSlopes[n]*roadSlopes[n-1]*roadStepY)/(roadSlopes[n] - roadSlopes[n-1]))*width,(1 - (n - 0.5 - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
   }
   endShape();
+  /*
   stroke(255,0,0);
   strokeWeight(2);
   beginShape();
@@ -192,10 +214,12 @@ void drawRoad() {
     //line(roadPositions[n]*width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height,roadPositions[n - 1]*width, (1 - (n - 1 - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
   }
   endShape();
+  */
   stroke(0,0,255);
   for (int n = 0; n < nroadPositions; n++) {
     line(0, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height, width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
   }
+  
   stroke(255);
   fill(255);
 }
@@ -220,11 +244,16 @@ void drawDetectFailure() {
 
 void drawStats() {
   stroke(0,255,0);
-  strokeWeight(20);
+  strokeWeight(40);
   line(0,0,width,0);
+  textSize(20);
+  fill(255);
+  text("Score: "+Integer.toString(playerScore), 100, 15);
+  text("Level: "+playerLevel, 0.5*width - 50, 15);
+  text("Error: "+Float.toString(sqrt(meanSquaredError)), width - 100, 15);
 }
 
-//block positions at Start
+//road positions at Start
 void initPositions() {
   roadPositions = new float[nroadPositions];
   roadSlopes = new float[nroadPositions];
@@ -247,6 +276,7 @@ void runWorld() {
     roadYPosition += move; //move forward by move
     if(roadYPosition > roadStepY) { //we have moved more than a step, we can jump to next step and create a new step
       roadYPosition -= roadStepY;
+      playerScore += 1; //player score increases with each segment passed
       for (int n = 0; n < (nroadPositions - 1); n++) {
         roadPositions[n] = roadPositions[n+1]; //move steps along
         roadSlopes[n] = roadSlopes[n+1]; //move steps along
