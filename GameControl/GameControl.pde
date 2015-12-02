@@ -3,7 +3,6 @@
 //TODO: 
 //ADD damping to shared control
 //increasing difficulty, levels
-//shared control functions
 //capture performance measures
 //usernames, highscores
 //randomly assign conditions to users
@@ -11,6 +10,9 @@
 //create qualtrics survey
 //make a curved center of the road instead of  discrete sections at angles - or discretize further to smooth - then the discretization will need to be at greater than 200 Hz to not be felt directly; might still cause resonance issues
 //curves instead of lines
+
+//LATER:
+//shared control functions
 
 //NOTE:
 // made variables accessed by the threads volatile, so that any updates are seen immediately by the other threads
@@ -29,6 +31,8 @@ int cnt = 0;
 Server myServer;        
 byte[] byteBuffer = new byte[8];
 
+//game state
+int gameState = 1;
 
 //single available path
 static final int nroadPositions = 15; //number of road positions cached, roadStepY*nroadPositions has to be greateer than 1 to be beigger than the screen size
@@ -55,6 +59,7 @@ static final float steerTorqueMax = 2.0; //max force that can be applied to the 
 
 //margin zones
 static final float marginZone = 0.05;
+static final float cautionDist = 0.02;
 
 //safety factor in detection of leaving the road
 static final float roadSafety = 0.02;
@@ -109,6 +114,10 @@ String playerLevel = "training";
 float meanSquaredError = 0.0; //mean performance data
 long nError = 0; //number of points this mean is over
 
+//intro screen
+String username = "";
+int userId = 0;
+
 void setup() {
   //size(640, 480, P3D);
   //size(1366, 768);//, P3D);
@@ -140,38 +149,47 @@ void setup() {
 void draw () {
   background(0);
 
-  drawRoad();
-  drawPlayer(playerPosx);
-  drawDetectFailure();
-  drawIdealPos();
-  
-  getPerformance();
-  drawStats();
-  
-  
-  
-  fcount += 1;
+  switch(gameState) {
+    case 0: //gameplay
+      drawRoad();
+      drawPlayer(playerPosx);
+      drawDetectFailure();
+      drawIdealPos();
+      
+      getPerformance();
+      drawStats();
+      
+      fcount += 1;
+      int m = millis();
+      if (m - lastm > 1000) {
+        print("fps: " + fcount + "; ");
+        print("worldupd: " + worldcount + "; ");
+        println("motormsg: " + messagecount + "; ");
+        messagecount = 0;
+        worldcount = 0;
+        fcount = 0;
+        lastm = m;
+        //println("slopes[0]: " + roadSlopes[0]);
+      }
+      break;
+    case 1:
+      textSize(40);
+      fill(0,0,255);
+      text("Username: "+username, 300, 0.5*height);
+      break;
+  }
+     
+   /***********************  visibility occlusion ********************************/
   int m = millis();
   if (m - lastm > 1000) {
-    print("fps: " + fcount + "; ");
-    print("worldupd: " + worldcount + "; ");
-    println("motormsg: " + messagecount + "; ");
-    messagecount = 0;
-    worldcount = 0;
-    fcount = 0;
-    lastm = m;
-    //println("slopes[0]: " + roadSlopes[0]);
-   
-   /***********************  visibility occlusion ********************************/
-   if(occlusionEnabled) {
-     if(visible) {
-       visible = false;
-     }
-     else {
-       visible = true;
-     }
-   }
-   
+    if(occlusionEnabled) {
+      if(visible) {
+        visible = false;
+      }
+      else {
+        visible = true;
+      }
+    }
   }
   if(!visible) {
      background(0);
@@ -234,7 +252,21 @@ void drawIdealPos() {
 
 void drawDetectFailure() {
   if(abs(idealPosX - playerPosx) > (roadWidth/2 + roadSafety - playerWidth)) {
-    stroke(255,0,0);
+    stroke(255,0,0); //red
+    strokeWeight(20);
+    line(0,0,0,height);
+    line(width,0,width,height);
+    stroke(255);
+  }
+  else if(abs(idealPosX - playerPosx) > (roadWidth/2 - playerWidth - cautionDist )) {
+    stroke(200,200,0); //yellow
+    strokeWeight(20);
+    line(0,0,0,height);
+    line(width,0,width,height);
+    stroke(255);
+  }
+  else {
+    stroke(50,255,50); //green
     strokeWeight(20);
     line(0,0,0,height);
     line(width,0,width,height);
@@ -250,7 +282,7 @@ void drawStats() {
   fill(255);
   text("Score: "+Integer.toString(playerScore), 100, 15);
   text("Level: "+playerLevel, 0.5*width - 50, 15);
-  text("Error: "+Float.toString(sqrt(meanSquaredError)), width - 100, 15);
+  text("Error: "+Float.toString(sqrt(meanSquaredError)), width - 200, 15);
 }
 
 //road positions at Start
@@ -268,11 +300,13 @@ void initPositions() {
 
 //runs the world - moves block down according to velocity, creates new blocks as blocks leave the world, moves player according to steering angle and applies feedback forces
 void runWorld() {
-  while (true) {
+  while (true) {  //run when game is being played
     ctime = millis();
-    
+    float move = 0;
     //moving the world
-    float move = ((float) (ctime - ltime))*worldVelocity/1000; //time in ms, so we divide by 1000
+    if(gameState == 0) {
+    move = ((float) (ctime - ltime))*worldVelocity/1000; //time in ms, so we divide by 1000
+    }
     roadYPosition += move; //move forward by move
     if(roadYPosition > roadStepY) { //we have moved more than a step, we can jump to next step and create a new step
       roadYPosition -= roadStepY;
@@ -404,9 +438,26 @@ void runServer () {
 
 //moves player with the arrow keys
 void keyPressed() {
-  if (keyCode == RIGHT) {
-    steerAngle += steerKeyStep;
-  } else if (keyCode == LEFT) {
-    steerAngle -= steerKeyStep;
-  } 
+  switch(gameState) {
+    case 0: //gameplay
+      if (keyCode == RIGHT) {
+        steerAngle += steerKeyStep;
+      } else if (keyCode == LEFT) {
+        steerAngle -= steerKeyStep;
+      }
+      break;
+    case 1: //intro screen
+      if(key == BACKSPACE) { //remove one character
+        if (username != null && username.length() != 0) {
+          username = username.substring(0, username.length()-1);
+        }
+      }
+      else if(key == '\n') { //done, set username, switch to game
+        gameState = 0;
+      }
+      else if(username.length() <= 10){
+        username += key;
+      }
+      break;
+  }
 }
