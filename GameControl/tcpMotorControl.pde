@@ -21,7 +21,7 @@ void runServer () {
       String whatClientSaid = thisClient.readString();
       if (whatClientSaid != null) {
         double data_received = Double.parseDouble(whatClientSaid);
-        //println("Data received : " + data_received);
+        println("Data received : " + data_received);
         steerAngle = (float) data_received;
         thisClient.write(String.valueOf(steerTorque));
         messagecount += 1;

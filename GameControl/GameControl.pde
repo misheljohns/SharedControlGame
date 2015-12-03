@@ -3,15 +3,14 @@
 //TODO: 
 //increasing difficulty, levels - set velocity and max slope change
 //display highscores
-//randomly assign conditions to users
 //measure steering reversals
-//export performance data to file - user ID, game condition, section condition, DVs
-//create qualtrics survey
 //better colours, actual road image, 
 //curves instead of lines
+//create qualtrics survey
 
 //LATER:
 //more shared control functions
+//randomly assign conditions to users - right now we only have within-subjects conditions
 
 //NOTE:
 // made variables accessed by the threads volatile, so that any updates are seen immediately by the other threads
@@ -93,7 +92,6 @@ volatile int feedbackType = 1; //type of shared control
 volatile float idealPosX = 0; //position of center of road (in fraction of screen)
 volatile float idealVelX = 0; //velocity of road center (in fraction of screen per second)
 
-
 //player score etc
 volatile int playerScore = 0;
 volatile float playerTime = 0.0;
@@ -105,10 +103,6 @@ static final float trainingTime = 30.0; //30s of training
 static final float unsupportedTime1 = 30.0 + 45.0; //45s
 static final float supportedTime1 = 30.0 + 45.0 + 45.0;
 static final float unsupportedTime2 = 30.0 + 45.0 + 45.0 + 45.0;
-
-//player performance data
-float meanSquaredError = 0.0; //mean performance data
-long nError = 0; //number of points this mean is over
 
 //intro screen
 String username = "";
@@ -137,7 +131,7 @@ void setup() {
   //initSerial();
 
   //motor control from realtime OS
-  //initServer();
+  initServer();
 
   //road = loadImage("road.png");
 
@@ -172,7 +166,7 @@ void draw () {
         worldcount = 0;
         fcount = 0;
         lastm = m;
-        //println("slopes[0]: " + roadSlopes[0]);
+        println("reversalcount: " + reversalCount);
       }
       break;
     case 1: //intro screen
