@@ -63,7 +63,7 @@ void runWorld() {
     
     
     steerTorque = wallTorque + sharedTorque;
-    
+    //println(steerTorque);
     //saturation
     if(steerTorque >= steerTorqueMax) {
       steerTorque = steerTorqueMax;
@@ -76,7 +76,7 @@ void runWorld() {
     }
     ltime = ctime;
     try {
-      Thread.sleep(0,100000);//wait 0ms and 100,000ns (=0.1ms(
+      //Thread.sleep(0,100000);//wait 0ms and 100,000ns (=0.1ms(
     }
     catch(Exception E)
     { //throws InterruptedException

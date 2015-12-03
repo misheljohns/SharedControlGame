@@ -24,6 +24,7 @@ void getPerformance() {
     else {//direction has changed from going right to going left
       directionFlipped = true;
       maxSteerAngle = steerAngle;
+      directionRight = false;
     }
   }
   else { 
@@ -36,6 +37,7 @@ void getPerformance() {
     else {//direction has changed from going right to going left
       directionFlipped = true;
       minSteerAngle = steerAngle;
+      directionRight = true;
     }
   }  
 }
