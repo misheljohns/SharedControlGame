@@ -4,6 +4,7 @@
 //increasing difficulty, levels - set velocity and max slope change
 //display highscores
 //randomly assign conditions to users
+//measure steering reversals
 //export performance data to file - user ID, game condition, section condition, DVs
 //create qualtrics survey
 //better colours, actual road image, 
@@ -239,15 +240,11 @@ void changeLevels() {
   }
   else if((playerTime > unsupportedTime2) && playerLevel == "Unsupported2") {//unsupported2 ends
     writePerfData(); //write performance data before shifting level
+    closeFiles();
     playerLevel = "End";
     gameState = 2;
   }
 
-}
-
-void getPerformance() {
-  float error = playerPosX - idealPosX;
-  meanSquaredError = (meanSquaredError*nError + error*error)/++nError;
 }
 
 void drawPlayer(float playerPos) {
@@ -260,7 +257,18 @@ void drawPlayer(float playerPos) {
 
 void drawRoad() {
   noFill();
+   
   stroke(255);
+  strokeWeight((int)(roadWidth*width));
+  beginShape();
+  for (int n = 0; n < nroadPositions; n++) {
+    vertex(roadPositions[n]*width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
+    //line(roadPositions[n]*width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height,roadPositions[n - 1]*width, (1 - (n - 1 - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
+  }
+  endShape();
+  
+  
+  stroke(255,0,0);
   strokeWeight(1);//(int)(roadWidth*width));
   beginShape();
   vertex(roadPositions[0]*width, (1 - (0 - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
@@ -272,21 +280,13 @@ void drawRoad() {
     point((roadPositions[n-1] + (roadSlopes[n]*(roadPositions[n]-roadPositions[n-1]) + roadSlopes[n]*roadSlopes[n-1]*roadStepY)/(roadSlopes[n] - roadSlopes[n-1]))*width,(1 - (n - 0.5 - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
   }
   endShape();
+  
   /*
-  stroke(255,0,0);
-  strokeWeight(2);
-  beginShape();
-  for (int n = 0; n < nroadPositions; n++) {
-    vertex(roadPositions[n]*width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
-    //line(roadPositions[n]*width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height,roadPositions[n - 1]*width, (1 - (n - 1 - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
-  }
-  endShape();
-  */
   stroke(0,0,255);
   for (int n = 0; n < nroadPositions; n++) {
     line(0, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height, width, (1 - (n - nroadPositionsBeneath)*roadStepY + roadYPosition)*height);
   }
-  
+  */
   stroke(255);
   fill(255);
 }
@@ -379,6 +379,6 @@ void keyPressed() {
 
 //called when the program is exited
 void stop(){
-  closeFiles();
+  //closeFiles();
   super.stop();
 }
