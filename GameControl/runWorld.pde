@@ -37,7 +37,7 @@ void runWorld() {
      wallTorque = -kwall*(playerPosX - (1 - marginZone));
     }
     else if(playerPosX < marginZone) {
-     wallTorque = kwall*(marginZone - playerPosX);
+     wallTorque = kwall*(marginZone - playerPosX);     
     } 
     else {
       wallTorque = 0.0;

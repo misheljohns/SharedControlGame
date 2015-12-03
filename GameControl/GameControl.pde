@@ -46,7 +46,7 @@ static final float steerScale = 1.0; //1 rad of rotation = steerScale movement o
 static final float steerTorqueMax = 3.0; //max force that can be applied to the motor
 
 //margin zones
-static final float marginZone = 0.05;
+static final float marginZone = 0.00; //margin zone for the wall force to kick in
 static final float cautionDist = 0.02;
 
 //safety factor in detection of leaving the road
@@ -86,7 +86,7 @@ static final float kwall = 20.0; //force constant for wall
 //shared control
 static final float kFeedback = 5.0; //force coefficient for shared control
 static final float alphaFeedback = 1.0; //fraction of force applied
-volatile int feedbackType = 1; //type of shared control
+volatile int feedbackType = 0; //type of shared control
 
 //road ideal positions
 volatile float idealPosX = 0; //position of center of road (in fraction of screen)
@@ -128,10 +128,10 @@ void setup() {
   strokeJoin(ROUND); //lines join in rounded edge, for the road
 
   //hapkit communication
-  //initSerial();
+  initSerial();
 
   //motor control from realtime OS
-  initServer();
+  //initServer();
 
   //road = loadImage("road.png");
 
