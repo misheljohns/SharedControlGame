@@ -41,7 +41,7 @@ double xh = 0;           // position of the handle [m]
 double vh = 0;              //velocity of the handle [m/s]
 double vh_last = 0;          //velocity of the handle at the last step (for filtering)
 double xh_last = 0;          // position of the handle [m], for filtering
-const double iir_alpha = 0.05; //iir filter constant for the velocity, alpha in [0,1] larger alpha lets higher frequencies though.
+const double iir_alpha = 0.005; //iir filter constant for the velocity, alpha in [0,1] larger alpha lets higher frequencies though.
 
 //timestep
 //const double timestep = 0.001; //assuming it takes 1 ms to complete the loop
@@ -213,7 +213,7 @@ void serialEvent() {
 //      Serial.println(inString);
 //      Serial.print("\tAfter conversion to float:");
       force = inString.toFloat();
-      force = force - temp_damping*vh;
+      force = force;// - temp_damping*vh;
       // clear the string for new input:
       inString = "";
     }
