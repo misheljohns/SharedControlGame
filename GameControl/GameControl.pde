@@ -99,9 +99,9 @@ String playerLevel = "";
 
 //durations of levels
 static final float trainingTime = 30.0; //30s of training
-static final float unsupportedTime1 = 30.0 + 45.0; //45s
-static final float supportedTime1 = 30.0 + 45.0 + 45.0;
-static final float unsupportedTime2 = 30.0 + 45.0 + 45.0 + 45.0;
+static final float unsupportedTime1 = 30.0 + 90.0; //90s section
+static final float supportedTime1 = 30.0 + 90.0 + 90.0;
+static final float unsupportedTime2 = 30.0 + 90.0 + 90.0 + 90.0;
 
 //intro screen
 String username = "";
@@ -113,12 +113,12 @@ FileWriter perfOutput; //lets us append to a file
 
 //levels
 static final float trainingVelocity = 0.09;
-static final float gameVelocity = 1.5;
+static final float gameVelocity = 2.0;
 
 void setup() {
   //size(640, 480, P3D);
   //size(1366, 768);//, P3D);
-  fullScreen();
+  //fullScreen();
   frameRate(60);
   rectMode(RADIUS); // I like to draw around the center position of the rectangles
   ellipseMode(RADIUS); // I like to draw around the center position of the circles
