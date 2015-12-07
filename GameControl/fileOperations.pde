@@ -25,7 +25,7 @@ void openFiles() {
 
 void writePerfData() {
   try{
-    perfOutput.write(username+","+playerLevel+","+playerTime+","+meanSquaredError+"\n");
+    perfOutput.write(username+","+playerLevel+","+playerTime+","+meanSquaredError+","+reversalCount+"\n");
   }
   catch(IOException e) {
     println("file write failed :"+e);

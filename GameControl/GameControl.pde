@@ -4,13 +4,12 @@
 //increasing difficulty, levels - set velocity and max slope change
 //display highscores
 //measure steering reversals
-//better colours, actual road image, 
 //curves instead of lines
-//create qualtrics survey
 
 //LATER:
 //more shared control functions
 //randomly assign conditions to users - right now we only have within-subjects conditions
+//actual road image, 
 
 //NOTE:
 // made variables accessed by the threads volatile, so that any updates are seen immediately by the other threads
@@ -114,7 +113,7 @@ FileWriter perfOutput; //lets us append to a file
 
 //levels
 static final float trainingVelocity = 0.09;
-static final float gameVelocity = 0.9;
+static final float gameVelocity = 1.5;
 
 void setup() {
   //size(640, 480, P3D);
@@ -219,6 +218,7 @@ void changeLevels() {
     feedbackType = 0;//no shared control
     meanSquaredError = 0.0; //reset perfromance data
     nError = 0;
+    reversalCount = 0; 
   }
   else if((playerTime > unsupportedTime1) && playerLevel == "Unsupported1") { //unsupported1 ends, moving into first supported section
     writePerfData(); //write performance data before shifting level
@@ -226,6 +226,7 @@ void changeLevels() {
     feedbackType = 1;//shared control
     meanSquaredError = 0.0; //reset perfromance data
     nError = 0;
+    reversalCount = 0; 
   }
   else if((playerTime > supportedTime1) && playerLevel == "Supported1") { //supported1 ends, moving into first unsupported section
     writePerfData(); //write performance data before shifting level
@@ -233,6 +234,7 @@ void changeLevels() {
     feedbackType = 0;//no shared control
     meanSquaredError = 0.0; //reset perfromance data
     nError = 0;
+    reversalCount = 0; 
   }
   else if((playerTime > unsupportedTime2) && playerLevel == "Unsupported2") {//unsupported2 ends
     writePerfData(); //write performance data before shifting level
